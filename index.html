@@ -633,7 +633,7 @@ function acceptImport(){
     items:(d.items||[]).map(x=>({id:id(),text:x.t||x.text||"",done:!!(x.d||x.done),icon:x.e||x.icon||iconFor(x.t||x.text||"")})) };
   state.lists.push(l);
   state.activeId=l.id;
-  if(d.showingTime && !state.showingTime) state.showingTime=d.showingTime;
+  if(d.showingTime) state.showingTime=d.showingTime;
   save(); dismissImport(); render();
 }
 function dismissImport(){ pendingImport=null; document.getElementById("importBanner").classList.remove("show"); }

@@ -1,6 +1,6 @@
 // Casa service worker — makes the app work fully offline after first load.
 // Bump CACHE (e.g. casa-v2) whenever you upload a new index.html to force a refresh.
-const CACHE = "casa-v2";
+const CACHE = "casa-v3";
 const ASSETS = ["./", "./index.html"];
 
 self.addEventListener("install", (e) => {
