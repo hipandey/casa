@@ -584,7 +584,7 @@ function decodePayload(s){
 function shareUrlFor(list){
   const payload=encodePayload({
     v:1,type:"list",name:list.name,emoji:list.emoji,
-    items:list.items.map(i=>({t:i.text,e:i.icon})),
+    items:list.items.map(i=>({t:i.text,e:i.icon,d:i.done?1:0})),
     showingTime:state.showingTime||null
   });
   const loc=location;
@@ -593,7 +593,8 @@ function shareUrlFor(list){
 }
 async function shareList(list){
   const {url,hosted}=shareUrlFor(list);
-  const text=`📋 Casa — “${list.emoji} ${list.name}” (${list.items.length} items). Open in the Casa app:`;
+  const done=list.items.filter(i=>i.done).length;
+  const text=`📋 Casa — “${list.emoji} ${list.name}” (${done}/${list.items.length} done). Open in the Casa app:`;
   if(!hosted){
     alert("To share a tap-to-open link, this app first needs to be opened from a web address (see the setup notes). For now you can still install it and use it on this device.");
     return;
@@ -616,8 +617,9 @@ function checkImport(){
     if(data && data.type==="list" && Array.isArray(data.items)){
       pendingImport=data;
       document.getElementById("importLead").textContent=`Add “${data.emoji||"📋"} ${data.name||"Shared list"}”?`;
+      const doneCount=data.items.filter(x=>x.d||x.done).length;
       document.getElementById("importSub").textContent=
-        `${data.items.length} item${data.items.length!==1?"s":""} shared with you`+
+        `${doneCount} of ${data.items.length} already checked`+
         (data.showingTime?` · showing at ${new Date(data.showingTime).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'})}`:"");
       document.getElementById("importBanner").classList.add("show");
     }
@@ -628,7 +630,7 @@ function acceptImport(){
   if(!pendingImport) return;
   const d=pendingImport;
   const l={ id:id(), name:d.name||"Shared list", emoji:d.emoji||"📋",
-    items:(d.items||[]).map(x=>({id:id(),text:x.t||x.text||"",done:false,icon:x.e||x.icon||iconFor(x.t||x.text||"")})) };
+    items:(d.items||[]).map(x=>({id:id(),text:x.t||x.text||"",done:!!(x.d||x.done),icon:x.e||x.icon||iconFor(x.t||x.text||"")})) };
   state.lists.push(l);
   state.activeId=l.id;
   if(d.showingTime && !state.showingTime) state.showingTime=d.showingTime;
@@ -683,6 +685,11 @@ checkImport();
 render();
 maybeInstallTip();
 setInterval(updateCountdown, 1000);
+
+// Offline support: cache the app so it launches with no internet after first load.
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
 </script>
 </body>
 </html>
