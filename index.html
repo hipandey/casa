@@ -417,6 +417,14 @@ function renderChips(){
   add.textContent="+ New list";
   add.onclick = addList;
   c.appendChild(add);
+  const imp = document.createElement("button");
+  imp.className="chip add";
+  imp.textContent="⬇ Import";
+  imp.onclick = ()=>{
+    const t=prompt("Paste the shared Casa link or code from WhatsApp:");
+    importFromText(t);
+  };
+  c.appendChild(imp);
 }
 
 function renderListSettings(list){
@@ -594,7 +602,7 @@ function shareUrlFor(list){
 async function shareList(list){
   const {url,hosted}=shareUrlFor(list);
   const done=list.items.filter(i=>i.done).length;
-  const text=`📋 Casa — “${list.emoji} ${list.name}” (${done}/${list.items.length} done). Open in the Casa app:`;
+  const text=`📋 Casa — “${list.emoji} ${list.name}” (${done}/${list.items.length} done).\nTap the link, or in your Casa app tap “⬇ Import” and paste this:`;
   if(!hosted){
     alert("To share a tap-to-open link, this app first needs to be opened from a web address (see the setup notes). For now you can still install it and use it on this device.");
     return;
@@ -607,24 +615,47 @@ async function shareList(list){
   window.open("https://wa.me/?text="+encodeURIComponent(text+"\n"+url),"_blank");
 }
 
-/* ---- Import a shared list from the URL ---- */
+/* ---- Import a shared list ---- */
 let pendingImport=null;
-function checkImport(){
-  const m=(location.hash||"").match(/import=([^&]+)/);
-  if(!m) return;
+function showImportBanner(data){
+  pendingImport=data;
+  document.getElementById("importLead").textContent=`Add “${data.emoji||"📋"} ${data.name||"Shared list"}”?`;
+  const doneCount=data.items.filter(x=>x.d||x.done).length;
+  document.getElementById("importSub").textContent=
+    `${doneCount} of ${data.items.length} already checked`+
+    (data.showingTime?` · showing at ${new Date(data.showingTime).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'})}`:"");
+  document.getElementById("importBanner").classList.add("show");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+// Pull the code out of a full link, a query string, or a bare pasted code.
+function extractCode(txt){
+  if(!txt) return "";
+  const m=(""+txt).match(/import=([A-Za-z0-9\-_]+)/);
+  if(m) return m[1];
+  const t=(""+txt).trim();
+  return /^[A-Za-z0-9\-_]+$/.test(t) ? t : "";
+}
+function tryImport(code){
+  if(!code) return false;
   try{
-    const data=decodePayload(m[1]);
-    if(data && data.type==="list" && Array.isArray(data.items)){
-      pendingImport=data;
-      document.getElementById("importLead").textContent=`Add “${data.emoji||"📋"} ${data.name||"Shared list"}”?`;
-      const doneCount=data.items.filter(x=>x.d||x.done).length;
-      document.getElementById("importSub").textContent=
-        `${doneCount} of ${data.items.length} already checked`+
-        (data.showingTime?` · showing at ${new Date(data.showingTime).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'})}`:"");
-      document.getElementById("importBanner").classList.add("show");
-    }
-  }catch(e){ /* ignore malformed links */ }
-  history.replaceState(null,"",location.pathname+location.search);
+    const data=decodePayload(code);
+    if(data && data.type==="list" && Array.isArray(data.items)){ showImportBanner(data); return true; }
+  }catch(e){}
+  return false;
+}
+function importFromText(txt){
+  if(txt===null || txt===undefined) return;
+  const code=extractCode(txt);
+  if(!tryImport(code)){
+    alert("That doesn't look like a Casa list link. Copy the whole link (or code) from WhatsApp and try again.");
+  }
+}
+function checkImport(){
+  // Accept both #import=… and ?import=… so links open correctly however they land.
+  const src=(location.hash||"")+"&"+(location.search||"");
+  const code=extractCode(src);
+  if(code) tryImport(code);
+  history.replaceState(null,"",location.pathname);
 }
 function acceptImport(){
   if(!pendingImport) return;
